@@ -1,0 +1,19 @@
+{
+  "floor": 50,
+  "max": 100,
+  "decay_speed": 1,
+  "focus_bonus": 20,
+  "extra_floor_penalty": 10,
+  "specialist_magnitude": 25,
+  "switch_rate_multiplier": 1,
+  "affected_blocks": [
+    "minecraft:iron_ore",
+    "minecraft:deepslate_iron_ore",
+    "minecraft:gold_ore",
+    "minecraft:deepslate_gold_ore",
+    "minecraft:diamond_ore",
+    "minecraft:deepslate_diamond_ore",
+    "minecraft:stone",
+    "minecraft:deepslate"
+  ]
+}

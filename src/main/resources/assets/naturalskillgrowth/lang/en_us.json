@@ -1,0 +1,13 @@
+{
+  "itemGroup.naturalskillgrowth": "Example Mod Tab",
+  "block.naturalskillgrowth.example_block": "Example Block",
+  "item.naturalskillgrowth.example_item": "Example Item",
+
+  "naturalskillgrowth.configuration.title": "NaturalSkillGrowth Configs",
+  "naturalskillgrowth.configuration.section.naturalskillgrowth.common.toml": "NaturalSkillGrowth Configs",
+  "naturalskillgrowth.configuration.section.naturalskillgrowth.common.toml.title": "NaturalSkillGrowth Configs",
+  "naturalskillgrowth.configuration.items": "Item List",
+  "naturalskillgrowth.configuration.logDirtBlock": "Log Dirt Block",
+  "naturalskillgrowth.configuration.magicNumberIntroduction": "Magic Number Text",
+  "naturalskillgrowth.configuration.magicNumber": "Magic Number"
+}
