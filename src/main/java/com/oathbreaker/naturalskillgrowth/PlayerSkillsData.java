@@ -72,8 +72,28 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
 
     // MAIN METHODS
 
-    public float getAttention(ResourceLocation skillId) {
-        throw new UnsupportedOperationException("TODO: A0 из SkillDefinitions.get(skillId).floor(), если ключа нет");
+    /**
+     * Получает уровень вовлеченности в навык
+     * Т.е. если игрок вкладывается в навык, он растет быстрее
+     * Но если игрок переключится и начнет вкладываться в другой,
+     * тот будет расти медленнее, чем изначальный
+     * Потому что смена профессии - тяжелое дело
+     * @param skillId айдишник навыка
+     * @return текущее значение вовлеченности ИЛИ "нетронутую" вовлеченность
+     */
+    private float getAttention(ResourceLocation skillId) {
+
+        if (progress.containsKey(skillId))
+        {
+            return progress.get(skillId).attention();
+        }
+
+        SkillDefinition def = SkillDefinitionsHandler.get(skillId);
+
+        // возвращаем "нетронутую" вовлеченность, как у свежего навыка
+        // формулу А0 (aka attention0 - взял из аналогичной формулы подсчета startEfficiency)
+        float A0 = (def.startEfficiency() - def.floor()) / (def.max() - def.floor());
+        return A0;
     }
 
     public float getPeak(ResourceLocation skillId) {

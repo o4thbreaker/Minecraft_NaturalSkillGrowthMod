@@ -13,6 +13,7 @@ import java.util.List;
  * так что можно начать с минимального файла ({"floor": 50.0}) и дописывать
  * остальное по мере необходимости.
  *
+ * @param startEfficiency       стартовый показатель навыка (условно 85 из 100)
  * @param floor                 минимум, до которого падает ЗАБРОШЕННЫЙ навык (0..100)
  * @param max                   потолок ОБЫЧНОГО (не сфокусированного) роста, обычно 100 = ваниль
  * @param decaySpeed            во сколько раз быстрее/медленнее ЭТОТ навык увядает
@@ -28,6 +29,7 @@ import java.util.List;
  *                              и для применения эффектов (руда/камень у шахтера, урожай у фермера).
  */
 public record SkillDefinition(
+        float startEfficiency,
         float floor,
         float max,
         float decaySpeed,
@@ -39,6 +41,7 @@ public record SkillDefinition(
 ) {
 
     public static final Codec<SkillDefinition> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.FLOAT.fieldOf("start_efficiency").forGetter(SkillDefinition::startEfficiency),
             Codec.FLOAT.fieldOf("floor").forGetter(SkillDefinition::floor),
             Codec.FLOAT.optionalFieldOf("max", 100.0f).forGetter(SkillDefinition::max),
             Codec.FLOAT.optionalFieldOf("decay_speed", 1.0f).forGetter(SkillDefinition::decaySpeed),

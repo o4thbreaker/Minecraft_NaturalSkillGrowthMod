@@ -1,4 +1,5 @@
 {
+  "start_efficiency": 85,
   "floor": 50,
   "max": 100,
   "decay_speed": 1,
