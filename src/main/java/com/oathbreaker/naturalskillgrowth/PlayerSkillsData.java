@@ -38,13 +38,15 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
             PlayerSkillsData::new
     );
 
+    private static final float EPSILON = 0.005f;
+
     public static PlayerSkillsData createDefault() {
         return new PlayerSkillsData(new HashMap<>(), Optional.empty());
     }
 
     /**
      * Проверка на фокус на навыке. По факту проверяет на focusedSkill == skillId
-     * @param skillId айдишник проверяемого навыка
+     * @param skillId рассматриваемый навык
      * @return наличие фокуса
      */
     public boolean isFocusedOn(ResourceLocation skillId) {
@@ -54,7 +56,7 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
     /**
      * Безусловно ставит фокус на навык
      * ВАЖНО: метод не проверяет никакие значения, просто ставит фокус
-     * @param skillId навык для фокусировки
+     * @param skillId рассматриваемый навык
      * @return обновленный SkillsData с новым фокусом
      */
     public PlayerSkillsData withFocus(ResourceLocation skillId) {
@@ -73,39 +75,96 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
     // MAIN METHODS
 
     /**
+     * Считает текущую эффективность
+     * Если эффективность дошла до max-значения и была включена фокусировка на навыке,
+     * то эффективность начинает изменяться от max до max+focusBonus
+     * в зависимости от текущего значения focusAttention
+     * @param skillId рассматриваемый навык
+     * @return подсчитанная эффективность (или max, если вылезло за него без разрешения)
+     */
+    public float getEfficiency(ResourceLocation skillId)
+    {
+        SkillDefinition def = SkillDefinitionsHandler.get(skillId);
+
+        float attention = getAttention(skillId);
+
+        // текущая эффективность линейно зависит от attention.
+        // чем больше attention, тем выше эффективность по этому навыку.
+        float efficiency = def.floor() + (def.max() - def.floor()) * attention;
+
+        float distanceToMax = def.max() - efficiency;
+
+        boolean isEfficiencyMaxed = (distanceToMax <= (def.max() * EPSILON)) || (efficiency >= def.max());
+        if (isFocusedOn(skillId) && isEfficiencyMaxed)
+        {
+            return def.max() + (def.focusBonus() * getFocusAttention(skillId));
+        }
+
+        return Math.min(efficiency, def.max());
+    }
+
+    public PlayerSkillsData applyAction(ResourceLocation skillId, float weight) {
+        throw new UnsupportedOperationException("TODO: имплементировать");
+    }
+
+    /**
      * Получает уровень вовлеченности в навык
      * Т.е. если игрок вкладывается в навык, он растет быстрее
      * Но если игрок переключится и начнет вкладываться в другой,
-     * тот будет расти медленнее, чем изначальный
+     * тот будет расти медленнее, чем изначальный, т.е. attention уменьшится
      * Потому что смена профессии - тяжелое дело
-     * @param skillId айдишник навыка
+     * @param skillId рассматриваемый навык
      * @return текущее значение вовлеченности ИЛИ "нетронутую" вовлеченность
      */
-    private float getAttention(ResourceLocation skillId) {
-
+    private float getAttention(ResourceLocation skillId)
+    {
         if (progress.containsKey(skillId))
         {
             return progress.get(skillId).attention();
         }
 
+        return calculateA0(skillId);
+    }
+
+    /**
+     * Получает уровень вовлеченность при фокусировке на навык
+     * @param skillId рассматриваемый навык
+     * @return текущее значение сфокусированной вовлеченности или дефолтная вовлеченность
+     */
+    private float getFocusAttention(ResourceLocation skillId)
+    {
+        if (progress.containsKey(skillId))
+        {
+            return progress.get(skillId).focusAttention();
+        }
+        return 0.0f;
+    }
+
+    /**
+     * Наивысшее когда-либо достигнутое attention по этому навыку
+     * @param skillId рассматриваемый навык
+     * @return либо значение peak, либо то же, что вернет getAttention по умолчанию (т.е. A0)
+     */
+    private float getPeak(ResourceLocation skillId)
+    {
+        if (progress.containsKey(skillId))
+        {
+            return progress.get(skillId).peak();
+        }
+        return calculateA0(skillId);
+    }
+
+    /**
+     * Хелпер-метод, который подсчитывает "нетронутую" вовлеченность, как у свежего навыка
+     * формулу А0 (aka attention0 - взял из аналогичной формулы подсчета getEfficiency)
+     * @param skillId рассматриваемый навык
+     * @return посчитанная вовлеченность как при старте игры
+     */
+    private float calculateA0(ResourceLocation skillId)
+    {
         SkillDefinition def = SkillDefinitionsHandler.get(skillId);
 
-        // возвращаем "нетронутую" вовлеченность, как у свежего навыка
-        // формулу А0 (aka attention0 - взял из аналогичной формулы подсчета startEfficiency)
-        float A0 = (def.startEfficiency() - def.floor()) / (def.max() - def.floor());
-        return A0;
-    }
-
-    public float getPeak(ResourceLocation skillId) {
-        throw new UnsupportedOperationException("TODO: имплементировать");
-    }
-
-    public float getEfficiency(ResourceLocation skillId) {
-        throw new UnsupportedOperationException("TODO: имплементировать");
-    }
-
-    public PlayerSkillsData applyAction(ResourceLocation skillId, float weight) {
-        throw new UnsupportedOperationException("TODO: имплементировать");
+        return (def.startEfficiency() - def.floor()) / (def.max() - def.floor());
     }
 }
 
