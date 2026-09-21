@@ -86,21 +86,32 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
     {
         SkillDefinition def = SkillDefinitionsHandler.get(skillId);
 
-        float attention = getAttention(skillId);
+        float focusAttention = getFocusAttention(skillId);
+        if (focusAttention > EPSILON)
+        {
+            return def.max() + def.focusBonus() * getFocusAttention(skillId);
+        }
 
         // текущая эффективность линейно зависит от attention.
         // чем больше attention, тем выше эффективность по этому навыку.
+        float attention = getAttention(skillId);
         float efficiency = def.floor() + (def.max() - def.floor()) * attention;
 
-        float distanceToMax = def.max() - efficiency;
-
-        boolean isEfficiencyMaxed = (distanceToMax <= (def.max() * EPSILON)) || (efficiency >= def.max());
-        if (isFocusedOn(skillId) && isEfficiencyMaxed)
-        {
-            return def.max() + (def.focusBonus() * getFocusAttention(skillId));
-        }
-
         return Math.min(efficiency, def.max());
+    }
+
+    /**
+     * Проверяет, достиг ли efficiency своего потолка
+     * (точнее, с погрешностью EPSILON)
+     * @param skillId рассматриваемый навык
+     * @return достиг
+     */
+    public boolean isEfficiencyAtMax(ResourceLocation skillId)
+    {
+        SkillDefinition def = SkillDefinitionsHandler.get(skillId);
+        float efficiency = def.floor() + (def.max() - def.floor()) * getAttention(skillId);
+        float distanceToMax = def.max() - efficiency;
+        return distanceToMax <= (def.max() * EPSILON) || efficiency >= def.max();
     }
 
     public PlayerSkillsData applyAction(ResourceLocation skillId, float weight) {
