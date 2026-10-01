@@ -18,7 +18,7 @@ import net.minecraft.network.codec.StreamCodec;
  *                          attention упал от floor. Нужно для правила "если уже вложился в
  *                          шахтерство до 96, а потом решил качать фермерство - фермерство будет
  *                          расти медленнее, чем росло шахтерство с нуля".
- *                          Как именно peak ОСТАЛЬНЫХ навыков тормозит рост ТЕКУЩЕГО - см. TODO в
+ *                          Как именно peak ОСТАЛЬНЫХ навыков тормозит рост ТЕКУЩЕГО - см.
  *                          PlayerSkillsData.applyAction().
  */
 public record SkillProgress(float attention, float focusAttention, float peak)
@@ -35,4 +35,21 @@ public record SkillProgress(float attention, float focusAttention, float peak)
             ByteBufCodecs.FLOAT, SkillProgress::peak,
             SkillProgress::new
     );
+
+    // NOTE: wither methods
+
+    public SkillProgress withAttention(float newAttention)
+    {
+        return new SkillProgress(newAttention, focusAttention, peak);
+    }
+
+    public SkillProgress withFocusAttention(float newFocusAttention)
+    {
+        return new SkillProgress(attention, newFocusAttention, peak);
+    }
+
+    public SkillProgress withPeak(float newPeak)
+    {
+        return new SkillProgress(attention, focusAttention, newPeak);
+    }
 }
