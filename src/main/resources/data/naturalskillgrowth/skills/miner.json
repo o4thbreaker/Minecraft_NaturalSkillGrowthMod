@@ -7,14 +7,14 @@
   "extra_floor_penalty": 10,
   "specialist_magnitude": 25,
   "switch_rate_multiplier": 1,
-  "affected_blocks": [
-    "minecraft:iron_ore",
-    "minecraft:deepslate_iron_ore",
-    "minecraft:gold_ore",
-    "minecraft:deepslate_gold_ore",
-    "minecraft:diamond_ore",
-    "minecraft:deepslate_diamond_ore",
-    "minecraft:stone",
-    "minecraft:deepslate"
-  ]
+  "affected_blocks": {
+    "minecraft:iron_ore":  0.05,
+    "minecraft:deepslate_iron_ore":  0.06,
+    "minecraft:gold_ore":  0.05,
+    "minecraft:deepslate_gold_ore":  0.06,
+    "minecraft:diamond_ore":  0.07,
+    "minecraft:deepslate_diamond_ore":  0.08,
+    "minecraft:stone": 0,
+    "minecraft:deepslate" : 0
+  }
 }

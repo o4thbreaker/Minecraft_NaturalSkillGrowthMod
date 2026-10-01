@@ -1,0 +1,16 @@
+{
+  "start_efficiency": 85,
+  "floor": 50,
+  "max": 100,
+  "decay_speed": 1,
+  "focus_bonus": 20,
+  "extra_floor_penalty": 10,
+  "specialist_magnitude": 15,
+  "switch_rate_multiplier": 1,
+  "affected_blocks": {
+    "minecraft:wheat":  0.03,
+    "minecraft:potatoes":  0.04,
+    "minecraft:carrots":  0.05,
+    "minecraft:beetroots": 0.06
+  }
+}

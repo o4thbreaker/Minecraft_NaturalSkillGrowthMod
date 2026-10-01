@@ -75,6 +75,18 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
         return new PlayerSkillsData(progress, Optional.empty());
     }
 
+    public PlayerSkillsData withoutSkill(ResourceLocation skillId)
+    {
+        if (!progress.containsKey(skillId)) return this;
+
+        Map<ResourceLocation, SkillProgress> newProgress = new HashMap<>(this.progress);
+        newProgress.remove(skillId);
+
+        Optional<ResourceLocation> newFocus = isFocusedOn(skillId) ? Optional.empty() : focusedSkill;
+
+        return new PlayerSkillsData(newProgress, newFocus);
+    }
+
     // NOTE: MAIN METHODS
 
     /**
@@ -99,6 +111,8 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
         // текущая эффективность линейно зависит от attention.
         // чем больше attention, тем выше эффективность по этому навыку.
         float attention = getAttention(skillId);
+
+        // TODO: fix the equal decay by adding the extraFloorPenalty
         float efficiency = def.floor() + (def.max() - def.floor()) * attention;
 
         return Math.min(efficiency, def.max());
@@ -125,7 +139,6 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
      * При любом применении действия теряется часть прогресса в других навыках.
      * Значение, насколько "увяняет" навык зависит от weight и decaySpeed.
      * Если есть фокус на навыке и прогресс превышает max, то действие применяется к focus-шкале.
-     * Остальные навыки ПОКА ЧТО увядают так же, как и при отсутствии фокуса.
      *
      * @param skillId   навык, к которому будет применено действие
      * @param weight    величина "важности" этого действия на шкалу прогресса
@@ -133,6 +146,7 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
      */
     public PlayerSkillsData applyAction(ResourceLocation skillId, float weight)
     {
+        // if frozen due to other skill is being focused and maxed - do nothing
         if (isFrozen()) { return this; }
 
         Map<ResourceLocation, SkillProgress> newProgress = new HashMap<>(this.progress);
@@ -171,14 +185,16 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
             if (focusedSkill.isPresent() && id.equals(focusedSkill.get())) continue;
 
             SkillDefinition def = SkillDefinitionsHandler.get(id);
+            float a0 = calculateA0(id);
+            float a = getAttention(id);
             int skillsAmount = SkillDefinitionsHandler.allSkillIds().size();
 
-            float drain = (1 - calculateA0(id)) / (calculateA0(id) * (skillsAmount - 1)) * def.decaySpeed();
+            float drain = (1 - a0) / (a0 * (skillsAmount - 1)) * def.decaySpeed();
 
-            float drainedAttention = getAttention(id) - weight * drain * getAttention(id);
+            float drainedAttention = Math.max(0f, a - weight * drain * a);
 
             SkillProgress otherProgress = newProgress.getOrDefault(id,
-                    new SkillProgress(getAttention(id), getFocusAttention(id), getPeak(id)));
+                    new SkillProgress(a, getFocusAttention(id), getPeak(id)));
 
             newProgress.put(id, otherProgress.withAttention(drainedAttention));
         }

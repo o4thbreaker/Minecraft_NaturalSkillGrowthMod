@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -21,10 +22,11 @@ import java.util.Set;
 
 public class SkillDefinitionsHandler extends SimpleJsonResourceReloadListener
 {
+    public record SkillGainInfo(ResourceLocation skillId, float weight) {}
     private static final Logger LOGGER = LogUtils.getLogger();
     private static Map<ResourceLocation, SkillDefinition> DEFINITIONS = Map.of();
-    private static Map<ResourceLocation, ResourceLocation> BLOCK_TO_SKILL_MAP = Map.of();
-
+    private static Map<ResourceLocation, SkillGainInfo> BLOCK_TO_SKILL_MAP = Map.of();
+    private static Map<ResourceLocation, SkillGainInfo> ENTITY_TO_SKILL_MAP = Map.of();
 
 
     public SkillDefinitionsHandler()
@@ -45,7 +47,7 @@ public class SkillDefinitionsHandler extends SimpleJsonResourceReloadListener
     protected void apply(Map<ResourceLocation, JsonElement> loaded, ResourceManager manager, ProfilerFiller profiler)
     {
         Map<ResourceLocation, SkillDefinition> parsedDefinitions = new HashMap<>();
-        Map<ResourceLocation, ResourceLocation> tempBlockMap = new HashMap<>();
+        Map<ResourceLocation, SkillGainInfo> tempBlockMap = new HashMap<>();
 
         loaded.forEach((location, jsonElement) ->
         {
@@ -54,18 +56,21 @@ public class SkillDefinitionsHandler extends SimpleJsonResourceReloadListener
                     .ifPresent(skillDefinition ->
                     {
                         parsedDefinitions.put(location, skillDefinition);
-                        for (ResourceLocation blockId : skillDefinition.affectedBlocks()) {
-                            ResourceLocation existing = tempBlockMap.put(blockId, location);
-                            if (existing != null) {
-                                LOGGER.warn("Блок {} заявлен сразу двумя навыками: {} и {} - используется последний", blockId, existing, location);
-                            }
-                        }
+
+                        skillDefinition.affectedBlocks().forEach((blockId, weight) ->
+                        {
+                            SkillGainInfo newInfo = new SkillGainInfo(location, weight);
+                            SkillGainInfo existing = tempBlockMap.put(blockId, newInfo);
+
+                            if (existing != null) { LOGGER.warn("Блок {} заявлен сразу двумя навыками: {} и {} - используется последний",
+                                    blockId, existing.skillId(), location); }
+                        });
                     });
         });
 
         DEFINITIONS = Map.copyOf(parsedDefinitions);
         BLOCK_TO_SKILL_MAP = Map.copyOf(tempBlockMap);
-        LOGGER.info("Успешно загружено навыков: {}", DEFINITIONS.size());
+        LOGGER.info("Успешно загружено навыков: {}, зарегистрировано с весом: {}", DEFINITIONS.size(), BLOCK_TO_SKILL_MAP.size());
     }
 
     /**
@@ -101,9 +106,38 @@ public class SkillDefinitionsHandler extends SimpleJsonResourceReloadListener
      *
      * Возвращает null, если ни один навык не заявил этот блок своим.
      */
-    public static ResourceLocation classifyBlock(BlockState state) {
+    public static SkillGainInfo classifyBlock(BlockState state) {
         ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         return BLOCK_TO_SKILL_MAP.get(blockId);
+    }
+
+    /**
+     * Классификация сущности при убийстве.
+     * <p>
+     * Сначала ищет точное совпадение моба в ENTITY_TO_SKILL_MAP (O(1)).
+     * Если моба нет в мапе, ищет целевой навык (например, WARRIOR или переданный skillId)
+     * и возвращает default_entity_weight из его JSON.
+     *
+     * @param skillId       навык, которому по умолчанию отходит опыт за неперечисленных мобов (например, SkillIds.WARRIOR)
+     * @param entity        убитая сущность
+     * @return              объект SkillGainInfo или null, если fallbackSkillId не найден
+     */
+    public static SkillGainInfo classifyEntity(ResourceLocation skillId, Entity entity)
+    {
+        ResourceLocation entityId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+
+        SkillGainInfo info = ENTITY_TO_SKILL_MAP.get(entityId);
+        if (info != null) return info;
+
+        // if we didn't find explicit mob via ENTITY_TO_SKILL_MAP
+        SkillDefinition fallbackDef = DEFINITIONS.get(skillId);
+
+        if (fallbackDef != null && fallbackDef.defaultEntityWeight() > 0.0f)
+        {
+            return new SkillGainInfo(skillId, fallbackDef.defaultEntityWeight());
+        }
+
+        return null;
     }
 
     /**
@@ -118,3 +152,4 @@ public class SkillDefinitionsHandler extends SimpleJsonResourceReloadListener
         }
     }
 }
+
