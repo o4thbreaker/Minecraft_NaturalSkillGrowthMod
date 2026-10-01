@@ -45,16 +45,6 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
     }
 
     /**
-     * Проверка на фокус на навыке. По факту проверяет на focusedSkill == skillId.
-     *
-     * @param skillId   рассматриваемый навык
-     * @return          наличие фокуса
-     */
-    public boolean isFocusedOn(ResourceLocation skillId) {
-        return focusedSkill.isPresent() && focusedSkill.get().equals(skillId);
-    }
-
-    /**
      * Wither-метод, который безусловно ставит фокус на навык.
      * ВАЖНО: метод не проверяет никакие значения, просто ставит фокус.
      *
@@ -90,6 +80,42 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
     // NOTE: MAIN METHODS
 
     /**
+     * Проверка на фокус на навыке. По факту проверяет на focusedSkill == skillId.
+     *
+     * @param skillId   рассматриваемый навык
+     * @return          наличие фокуса
+     */
+    public boolean isFocusedOn(ResourceLocation skillId)
+    {
+        return focusedSkill.isPresent() && focusedSkill.get().equals(skillId);
+    }
+
+    /**
+     * Проверяет, достиг ли efficiency своего потолка
+     * (точнее, с погрешностью EPSILON)
+     *
+     * @param skillId   рассматриваемый навык
+     * @return          достиг
+     */
+    public boolean isEfficiencyAtMax(ResourceLocation skillId)
+    {
+        SkillDefinition def = SkillDefinitionsHandler.get(skillId);
+        float efficiency = def.floor() + (def.max() - def.floor()) * getAttention(skillId);
+        float distanceToMax = def.max() - efficiency;
+        return distanceToMax <= (def.max() * EPSILON) || efficiency >= def.max();
+    }
+
+    /**
+     * Проверяет, является ли специалистом по текущему skillId
+     * @param skillId рассматриваем навык
+     * @return специалист ли
+     */
+    public boolean isSpecialist(ResourceLocation skillId)
+    {
+        return isFocusedOn(skillId) && isEfficiencyAtMax(skillId);
+    }
+
+    /**
      * Считает текущую эффективность.
      * Если эффективность дошла до max-значения и была включена фокусировка на навыке,
      * то эффективность начинает изменяться от max до max+focusBonus
@@ -119,21 +145,6 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
     }
 
     /**
-     * Проверяет, достиг ли efficiency своего потолка
-     * (точнее, с погрешностью EPSILON)
-     *
-     * @param skillId   рассматриваемый навык
-     * @return          достиг
-     */
-    public boolean isEfficiencyAtMax(ResourceLocation skillId)
-    {
-        SkillDefinition def = SkillDefinitionsHandler.get(skillId);
-        float efficiency = def.floor() + (def.max() - def.floor()) * getAttention(skillId);
-        float distanceToMax = def.max() - efficiency;
-        return distanceToMax <= (def.max() * EPSILON) || efficiency >= def.max();
-    }
-
-    /**
      * Применяет "действие" (добыча руды, посадка урожая, убийство моба, etc).
      * В зависимости от параметра weight меняется "важность" этого действия на шкалу роста соответствующего навыка.
      * При любом применении действия теряется часть прогресса в других навыках.
@@ -154,7 +165,7 @@ public record PlayerSkillsData(Map<ResourceLocation, SkillProgress> progress, Op
         SkillProgress currentProgress = newProgress.getOrDefault(skillId,
                 new SkillProgress(getAttention(skillId), getFocusAttention(skillId), getPeak(skillId)));
 
-        if (isFocusedOn(skillId) && isEfficiencyAtMax(skillId))
+        if (isSpecialist(skillId))
         {
             // a = a + w * (1-a)
             float calculatedFocusAttention = currentProgress.focusAttention() + weight * (1.0f - currentProgress.focusAttention());
